@@ -26,15 +26,15 @@ os.makedirs("models", exist_ok=True)
 
 # Define model paths
 MODEL_PATHS = {
-    'resnet101': r"C:\Users\mohdr\OneDrive\Desktop\python\alzimer2\models\best_resnet101.pth",
-    'resnext101_32x8d': r"C:\Users\mohdr\OneDrive\Desktop\python\alzimer2\models\best_resnext101_32x8d.pth",
-    'densenet161': r"C:\Users\mohdr\OneDrive\Desktop\python\alzimer2\models\best_densenet161.pth",
-    'ensemble': r"C:\Users\mohdr\OneDrive\Desktop\python\alzimer2\models\best_alzheimer_model.pth",
+    'resnet101': r"models\best_resnet101.pth",
+    'resnext101_32x8d': r"models\best_resnext101_32x8d.pth",
+    'densenet161': r"models\best_densenet161.pth",
+    'ensemble': r"models\best_alzheimer_model.pth",
     # GAN model paths
-    'cgan_generator': r"C:\Users\mohdr\OneDrive\Desktop\python\alzimer2\models\cgan_generator.pth",
-    'cyclegan_G_AB': r"C:\Users\mohdr\OneDrive\Desktop\python\alzimer2\models\cyclegan_G_AB.pth",
-    'cyclegan_G_BA': r"C:\Users\mohdr\OneDrive\Desktop\python\alzimer2\models\cyclegan_G_BA.pth",
-    'highres_gan_generator': r"C:\Users\mohdr\OneDrive\Desktop\python\alzimer2\models\highres_gan_generator.pth"
+    'cgan_generator': r"models\cgan_generator.pth",
+    'cyclegan_G_AB': r"models\cyclegan_G_AB.pth",
+    'cyclegan_G_BA': r"models\cyclegan_G_BA.pth",
+    'highres_gan_generator': r"models\highres_gan_generator.pth"
 }
 
 # Function to load classification models
