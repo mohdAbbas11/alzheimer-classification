@@ -69,6 +69,22 @@ def download_model_if_needed(model_name):
             return False
     return True
 
+# Function to safely load model state
+def safe_load_state_dict(model_path, device_to_use):
+    try:
+        # First try normal loading
+        return torch.load(model_path, map_location=device_to_use)
+    except RuntimeError as e:
+        if "Tried to instantiate class" in str(e) or "_get_custom_class" in str(e):
+            st.warning(f"Custom class error when loading model. Trying to load with pickle_module=None.")
+            # Try loading with pickle_module=None to avoid custom class issues
+            try:
+                return torch.load(model_path, map_location=device_to_use, pickle_module=None)
+            except Exception as inner_e:
+                st.error(f"Failed alternative loading: {str(inner_e)}")
+                return None
+        raise e
+
 # Function to load classification models
 @st.cache_resource
 def load_classification_models(force_cpu=False):
@@ -86,7 +102,12 @@ def load_classification_models(force_cpu=False):
             
         try:
             model = EnhancedAlzheimerNet(model_name=model_name, num_classes=len(categories))
-            model.load_state_dict(torch.load(model_path, map_location=device_to_use))
+            state_dict = safe_load_state_dict(model_path, device_to_use)
+            if state_dict is None:
+                st.warning(f"Failed to load {model_name} model state.")
+                continue
+                
+            model.load_state_dict(state_dict)
             model = model.to(device_to_use)
             model.eval()
             models[model_name] = model
@@ -102,11 +123,15 @@ def load_classification_models(force_cpu=False):
         try:
             # Try to load the ensemble model - use resnext101_32x8d architecture instead of generic 'ensemble'
             ensemble_model = EnhancedAlzheimerNet(model_name='resnext101_32x8d', num_classes=len(categories))
-            ensemble_model.load_state_dict(torch.load(ensemble_path, map_location=device_to_use))
-            ensemble_model = ensemble_model.to(device_to_use)
-            ensemble_model.eval()
-            models['ensemble'] = ensemble_model
-            st.success("Successfully loaded ensemble model.")
+            state_dict = safe_load_state_dict(ensemble_path, device_to_use)
+            if state_dict is None:
+                st.warning(f"Failed to load ensemble model state.")
+            else:
+                ensemble_model.load_state_dict(state_dict)
+                ensemble_model = ensemble_model.to(device_to_use)
+                ensemble_model.eval()
+                models['ensemble'] = ensemble_model
+                st.success("Successfully loaded ensemble model.")
         except Exception as e:
             st.warning(f"Error loading ensemble model: {str(e)}")
             st.info("Will fall back to real-time ensemble of individual models.")
@@ -128,11 +153,15 @@ def load_gan_models(force_cpu=False):
     else:
         try:
             cgan = CGAN()
-            cgan.load_state_dict(torch.load(cgan_path, map_location=device_to_use))
-            cgan = cgan.to(device_to_use)
-            cgan.eval()
-            models["CGAN"] = cgan
-            st.success("Successfully loaded CGAN model.")
+            state_dict = safe_load_state_dict(cgan_path, device_to_use)
+            if state_dict is None:
+                st.warning(f"Failed to load CGAN model state.")
+            else:
+                cgan.load_state_dict(state_dict)
+                cgan = cgan.to(device_to_use)
+                cgan.eval()
+                models["CGAN"] = cgan
+                st.success("Successfully loaded CGAN model.")
         except Exception as e:
             st.warning(f"Error loading CGAN model: {str(e)}")
     
@@ -146,15 +175,21 @@ def load_gan_models(force_cpu=False):
         try:
             cyclegan_G_AB = CycleGAN(direction="AB")
             cyclegan_G_BA = CycleGAN(direction="BA")
-            cyclegan_G_AB.load_state_dict(torch.load(cyclegan_path_G_AB, map_location=device_to_use))
-            cyclegan_G_BA.load_state_dict(torch.load(cyclegan_path_G_BA, map_location=device_to_use))
-            cyclegan_G_AB = cyclegan_G_AB.to(device_to_use)
-            cyclegan_G_BA = cyclegan_G_BA.to(device_to_use)
-            cyclegan_G_AB.eval()
-            cyclegan_G_BA.eval()
-            models["CycleGAN_AB"] = cyclegan_G_AB
-            models["CycleGAN_BA"] = cyclegan_G_BA
-            st.success("Successfully loaded CycleGAN models.")
+            state_dict_AB = safe_load_state_dict(cyclegan_path_G_AB, device_to_use)
+            state_dict_BA = safe_load_state_dict(cyclegan_path_G_BA, device_to_use)
+            
+            if state_dict_AB is None or state_dict_BA is None:
+                st.warning(f"Failed to load one or both CycleGAN model states.")
+            else:
+                cyclegan_G_AB.load_state_dict(state_dict_AB)
+                cyclegan_G_BA.load_state_dict(state_dict_BA)
+                cyclegan_G_AB = cyclegan_G_AB.to(device_to_use)
+                cyclegan_G_BA = cyclegan_G_BA.to(device_to_use)
+                cyclegan_G_AB.eval()
+                cyclegan_G_BA.eval()
+                models["CycleGAN_AB"] = cyclegan_G_AB
+                models["CycleGAN_BA"] = cyclegan_G_BA
+                st.success("Successfully loaded CycleGAN models.")
         except Exception as e:
             st.warning(f"Error loading CycleGAN models: {str(e)}")
     
@@ -165,11 +200,15 @@ def load_gan_models(force_cpu=False):
     else:
         try:
             hires_gan = HighResGAN()
-            hires_gan.load_state_dict(torch.load(hires_gan_path, map_location=device_to_use))
-            hires_gan = hires_gan.to(device_to_use)
-            hires_gan.eval()
-            models["HighResGAN"] = hires_gan
-            st.success("Successfully loaded HighResGAN model.")
+            state_dict = safe_load_state_dict(hires_gan_path, device_to_use)
+            if state_dict is None:
+                st.warning(f"Failed to load HighResGAN model state.")
+            else:
+                hires_gan.load_state_dict(state_dict)
+                hires_gan = hires_gan.to(device_to_use)
+                hires_gan.eval()
+                models["HighResGAN"] = hires_gan
+                st.success("Successfully loaded HighResGAN model.")
         except Exception as e:
             st.warning(f"Error loading HighResGAN model: {str(e)}")
     
