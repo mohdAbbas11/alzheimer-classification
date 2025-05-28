@@ -100,8 +100,8 @@ def load_classification_models(force_cpu=False):
         st.warning(f"Ensemble model file {ensemble_path} not found and couldn't be downloaded.")
     else:
         try:
-            # Try to load the ensemble model
-            ensemble_model = EnhancedAlzheimerNet(model_name='ensemble', num_classes=len(categories))
+            # Try to load the ensemble model - use resnext101_32x8d architecture instead of generic 'ensemble'
+            ensemble_model = EnhancedAlzheimerNet(model_name='resnext101_32x8d', num_classes=len(categories))
             ensemble_model.load_state_dict(torch.load(ensemble_path, map_location=device_to_use))
             ensemble_model = ensemble_model.to(device_to_use)
             ensemble_model.eval()
@@ -109,6 +109,7 @@ def load_classification_models(force_cpu=False):
             st.success("Successfully loaded ensemble model.")
         except Exception as e:
             st.warning(f"Error loading ensemble model: {str(e)}")
+            st.info("Will fall back to real-time ensemble of individual models.")
     
     return models, device_to_use
 
