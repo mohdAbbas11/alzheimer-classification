@@ -305,7 +305,7 @@ def main():
     
     # Add device selection option
     st.sidebar.title("Device Settings")
-    force_cpu = st.sidebar.checkbox("Force CPU Usage (prevents CUDA out of memory errors)", value=False)
+    force_cpu = st.sidebar.checkbox("Force CPU Usage (prevents CUDA out of memory errors)", value=True)
     
     if force_cpu:
         st.sidebar.info("Using CPU for computation")
@@ -319,9 +319,24 @@ def main():
             st.sidebar.info("No GPU detected, using CPU")
             os.environ['FORCE_CPU'] = '1'
     
-    # Load models with force_cpu parameter
-    classification_models, device_to_use = load_classification_models(force_cpu=force_cpu)
-    gan_models, device_to_use = load_gan_models(force_cpu=force_cpu)
+    # Load models with force_cpu parameter - with error handling
+    try:
+        with st.spinner("Loading classification models..."):
+            classification_models, device_to_use = load_classification_models(force_cpu=force_cpu)
+        if not classification_models:
+            st.warning("No classification models were loaded successfully.")
+            
+        with st.spinner("Loading GAN models..."):
+            gan_models, device_to_use = load_gan_models(force_cpu=force_cpu)
+        if not gan_models:
+            st.warning("No GAN models were loaded successfully.")
+    except Exception as e:
+        st.error(f"Error loading models: {str(e)}")
+        import traceback
+        st.code(traceback.format_exc(), language="python")
+        classification_models = {}
+        gan_models = {}
+        device_to_use = torch.device("cpu")
     
     if app_mode == "Classification":
         st.header("Alzheimer's Disease Classification")
@@ -384,11 +399,12 @@ def main():
                         st.subheader("Individual Model Predictions")
                         
                         for model_name, model in classification_models.items():
-                            ind_class_idx, ind_probs = classify_image(model, processed_image)
-                            st.write(f"**{model_name.capitalize()}:** {categories[ind_class_idx]}")
+                            if model_name != 'ensemble':  # Skip showing ensemble results again
+                                ind_class_idx, ind_probs = classify_image(model, processed_image)
+                                st.write(f"**{model_name.capitalize()}:** {categories[ind_class_idx]}")
         else:
             st.warning("No classification models found. Please ensure the model files are in the correct location.")
-            st.info("Check that the model files exist in: C:\\Users\\mohdr\\OneDrive\\Desktop\\python\\alzimer2\\models\\")
+            st.info("Check that the model files exist in the 'models' directory.")
             st.info("Required files: best_resnet101.pth, best_resnext101_32x8d.pth, best_densenet161.pth")
     
     elif app_mode == "Image Generation":
@@ -538,4 +554,28 @@ def main():
         """)
 
 if __name__ == "__main__":
-    main() 
+    try:
+        # Display environment information
+        st.sidebar.markdown("### Environment Info")
+        st.sidebar.info(f"Python version: {sys.version}")
+        st.sidebar.info(f"PyTorch version: {torch.__version__}")
+        st.sidebar.info(f"Device: {torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')}")
+        
+        # Add option to skip model loading for debugging
+        skip_models = st.sidebar.checkbox("Skip model loading (debug mode)", value=False)
+        
+        if skip_models:
+            st.warning("Running in debug mode - model loading skipped")
+            # Run a simplified version of the app
+            st.title("🧠 Alzheimer's Disease Detection & Image Generation (Debug Mode)")
+            st.write("Application is running in debug mode. Model loading is skipped.")
+            st.info("To use the full application, uncheck 'Skip model loading' in the sidebar.")
+        else:
+            # Normal app execution
+            main()
+    except Exception as e:
+        st.error(f"❌ Application crashed: {str(e)}")
+        st.error(f"Exception type: {type(e).__name__}")
+        import traceback
+        st.code(traceback.format_exc(), language="python")
+        st.warning("Try enabling 'Skip model loading' in the sidebar to run in debug mode.") 
