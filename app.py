@@ -6,6 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 import sys
+import requests
 from pathlib import Path
 
 # Import models
@@ -24,18 +25,49 @@ os.makedirs("generated_images", exist_ok=True)
 os.makedirs("uploaded_images", exist_ok=True)
 os.makedirs("models", exist_ok=True)
 
-# Define model paths
+# Define model paths - use relative paths for GitHub deployment
 MODEL_PATHS = {
-    'resnet101': r"main\models\best_resnet101.pth",
-    'resnext101_32x8d': r"main\models\best_resnext101_32x8d.pth",
-    'densenet161': r"main\models\best_densenet161.pth",
-    'ensemble': r"main\models\best_alzheimer_model.pth",
+    'resnet101': os.path.join("models", "best_resnet101.pth"),
+    'resnext101_32x8d': os.path.join("models", "best_resnext101_32x8d.pth"),
+    'densenet161': os.path.join("models", "best_densenet161.pth"),
+    'ensemble': os.path.join("models", "best_alzheimer_model.pth"),
     # GAN model paths
-    'cgan_generator': r"main\models\cgan_generator.pth",
-    'cyclegan_G_AB': r"main\models\cyclegan_G_AB.pth",
-    'cyclegan_G_BA': r"main\models\cyclegan_G_BA.pth",
-    'highres_gan_generator': r"main\models\highres_gan_generator.pth"
+    'cgan_generator': os.path.join("models", "cgan_generator.pth"),
+    'cyclegan_G_AB': os.path.join("models", "cyclegan_G_AB.pth"),
+    'cyclegan_G_BA': os.path.join("models", "cyclegan_G_BA.pth"),
+    'highres_gan_generator': os.path.join("models", "highres_gan_generator.pth")
 }
+
+# GitHub release URLs for models - pointing to the actual repository
+GITHUB_RELEASE_URLS = {
+    'resnet101': "https://github.com/mohdAbbas11/alzheimer-classification/raw/main/models/best_resnet101.pth",
+    'resnext101_32x8d': "https://github.com/mohdAbbas11/alzheimer-classification/raw/main/models/best_resnext101_32x8d.pth",
+    'densenet161': "https://github.com/mohdAbbas11/alzheimer-classification/raw/main/models/best_densenet161.pth",
+    'ensemble': "https://github.com/mohdAbbas11/alzheimer-classification/raw/main/models/best_alzheimer_model.pth",
+    'cgan_generator': "https://github.com/mohdAbbas11/alzheimer-classification/raw/main/models/cgan_generator.pth",
+    'cyclegan_G_AB': "https://github.com/mohdAbbas11/alzheimer-classification/raw/main/models/cyclegan_G_AB.pth",
+    'cyclegan_G_BA': "https://github.com/mohdAbbas11/alzheimer-classification/raw/main/models/cyclegan_G_BA.pth",
+    'highres_gan_generator': "https://github.com/mohdAbbas11/alzheimer-classification/raw/main/models/highres_gan_generator.pth"
+}
+
+# Function to download model if not present
+def download_model_if_needed(model_name):
+    model_path = MODEL_PATHS[model_name]
+    if not os.path.exists(model_path):
+        st.info(f"Downloading {model_name} model... This may take a while.")
+        try:
+            url = GITHUB_RELEASE_URLS[model_name]
+            r = requests.get(url, stream=True)
+            r.raise_for_status()
+            with open(model_path, 'wb') as f:
+                for chunk in r.iter_content(chunk_size=8192):
+                    f.write(chunk)
+            st.success(f"Downloaded {model_name} model successfully.")
+            return True
+        except Exception as e:
+            st.error(f"Failed to download {model_name} model: {str(e)}")
+            return False
+    return True
 
 # Function to load classification models
 @st.cache_resource
@@ -48,21 +80,35 @@ def load_classification_models(force_cpu=False):
     # Load individual models
     for model_name in ['resnet101', 'resnext101_32x8d', 'densenet161']:
         model_path = MODEL_PATHS[model_name]
-        if os.path.exists(model_path):
-            try:
-                model = EnhancedAlzheimerNet(model_name=model_name, num_classes=len(categories))
-                model.load_state_dict(torch.load(model_path, map_location=device_to_use))
-                model = model.to(device_to_use)
-                model.eval()
-                models[model_name] = model
-                st.success(f"Successfully loaded {model_name} model.")
-            except Exception as e:
-                st.warning(f"Error loading {model_name} model: {str(e)}")
-        else:
-            st.warning(f"Model file {model_path} not found.")
+        if not os.path.exists(model_path) and not download_model_if_needed(model_name):
+            st.warning(f"Model file {model_path} not found and couldn't be downloaded.")
+            continue
+            
+        try:
+            model = EnhancedAlzheimerNet(model_name=model_name, num_classes=len(categories))
+            model.load_state_dict(torch.load(model_path, map_location=device_to_use))
+            model = model.to(device_to_use)
+            model.eval()
+            models[model_name] = model
+            st.success(f"Successfully loaded {model_name} model.")
+        except Exception as e:
+            st.warning(f"Error loading {model_name} model: {str(e)}")
     
-    # Load ensemble model if available - we'll use the ensemble functionality instead
-    # of loading a separate ensemble model, since there might be architecture mismatches
+    # Try to load ensemble model if available
+    ensemble_path = MODEL_PATHS['ensemble']
+    if not os.path.exists(ensemble_path) and not download_model_if_needed('ensemble'):
+        st.warning(f"Ensemble model file {ensemble_path} not found and couldn't be downloaded.")
+    else:
+        try:
+            # Try to load the ensemble model
+            ensemble_model = EnhancedAlzheimerNet(model_name='ensemble', num_classes=len(categories))
+            ensemble_model.load_state_dict(torch.load(ensemble_path, map_location=device_to_use))
+            ensemble_model = ensemble_model.to(device_to_use)
+            ensemble_model.eval()
+            models['ensemble'] = ensemble_model
+            st.success("Successfully loaded ensemble model.")
+        except Exception as e:
+            st.warning(f"Error loading ensemble model: {str(e)}")
     
     return models, device_to_use
 
@@ -76,7 +122,9 @@ def load_gan_models(force_cpu=False):
     
     # Load CGAN model
     cgan_path = MODEL_PATHS['cgan_generator']
-    if os.path.exists(cgan_path):
+    if not os.path.exists(cgan_path) and not download_model_if_needed('cgan_generator'):
+        st.warning(f"CGAN model file {cgan_path} not found and couldn't be downloaded.")
+    else:
         try:
             cgan = CGAN()
             cgan.load_state_dict(torch.load(cgan_path, map_location=device_to_use))
@@ -90,7 +138,10 @@ def load_gan_models(force_cpu=False):
     # Load CycleGAN models
     cyclegan_path_G_AB = MODEL_PATHS['cyclegan_G_AB']
     cyclegan_path_G_BA = MODEL_PATHS['cyclegan_G_BA']
-    if os.path.exists(cyclegan_path_G_AB) and os.path.exists(cyclegan_path_G_BA):
+    cycleGAN_AB_exists = os.path.exists(cyclegan_path_G_AB) or download_model_if_needed('cyclegan_G_AB')
+    cycleGAN_BA_exists = os.path.exists(cyclegan_path_G_BA) or download_model_if_needed('cyclegan_G_BA')
+    
+    if cycleGAN_AB_exists and cycleGAN_BA_exists:
         try:
             cyclegan_G_AB = CycleGAN(direction="AB")
             cyclegan_G_BA = CycleGAN(direction="BA")
@@ -108,7 +159,9 @@ def load_gan_models(force_cpu=False):
     
     # Load HighResGAN model
     hires_gan_path = MODEL_PATHS['highres_gan_generator']
-    if os.path.exists(hires_gan_path):
+    if not os.path.exists(hires_gan_path) and not download_model_if_needed('highres_gan_generator'):
+        st.warning(f"HighResGAN model file {hires_gan_path} not found and couldn't be downloaded.")
+    else:
         try:
             hires_gan = HighResGAN()
             hires_gan.load_state_dict(torch.load(hires_gan_path, map_location=device_to_use))
@@ -121,7 +174,7 @@ def load_gan_models(force_cpu=False):
     
     if not models:
         st.warning("No GAN models found or loaded successfully.")
-        st.info("Check that the model files exist in: C:\\Users\\mohdr\\OneDrive\\Desktop\\python\\alzimer2\\models\\")
+        st.info("Check that the model files exist in the 'models' directory.")
         st.info("Required GAN model files: cgan_generator.pth, cyclegan_G_AB.pth, cyclegan_G_BA.pth, highres_gan_generator.pth")
     
     return models, device_to_use
@@ -305,7 +358,7 @@ def main():
         # Check if models are available
         if not gan_models:
             st.warning("No GAN models were loaded successfully.")
-            st.info("Check that the model files exist in: C:\\Users\\mohdr\\OneDrive\\Desktop\\python\\alzimer2\\models\\")
+            st.info("Check that the model files exist in the 'models' directory.")
             st.info("Required GAN model files: cgan_generator.pth, cyclegan_G_AB.pth, cyclegan_G_BA.pth, highres_gan_generator.pth")
             return
         
