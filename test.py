@@ -5,7 +5,7 @@ from torch.optim import lr_scheduler
 import torchvision
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader, Dataset, random_split, WeightedRandomSampler
-from torch.amp import GradScaler, autocast  # Updated import path
+from torch.cuda.amp import GradScaler, autocast
 import os
 from PIL import Image
 import matplotlib.pyplot as plt
