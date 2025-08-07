@@ -125,7 +125,7 @@ $env:FORCE_CPU=1; python train_resnext.py
 - **HighResGAN**: Specialized GAN for generating high-resolution detailed MRI images
 
 ## Dataset
-The models were trained on segmented brain MRI images from the Argument  Alzheimer meri datasets. The dataset includes:
+The models were trained on segmented brain MRI images from the Argument  Alzheimer MRI datasets. The dataset includes:
 - 9,600 NonDemented images
 - 8,960 VeryMildDemented images
 - 8,960 MildDemented images
@@ -147,7 +147,8 @@ The models were trained on segmented brain MRI images from the Argument  Alzheim
 
 ## Acknowledgments
 
-Augmented Alzheimer Mri data set:-(https://www.kaggle.com/datasets/uraninjo/augmented-alzheimer-mri-dataset)
+Augmented Alzheimer MRI data set:-(https://www.kaggle.com/datasets/uraninjo/augmented-alzheimer-mri-dataset)
 
 - PyTorch team for providing pre-trained model architectures 
+
 
