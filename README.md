@@ -125,7 +125,7 @@ $env:FORCE_CPU=1; python train_resnext.py
 - **HighResGAN**: Specialized GAN for generating high-resolution detailed MRI images
 
 ## Dataset
-The models were trained on segmented brain MRI images from the OASIS and ADNI datasets. The dataset includes:
+The models were trained on segmented brain MRI images from the Argument  Alzimer meri datasets. The dataset includes:
 - 9,600 NonDemented images
 - 8,960 VeryMildDemented images
 - 8,960 MildDemented images
@@ -146,6 +146,7 @@ The models were trained on segmented brain MRI images from the OASIS and ADNI da
 [Specify your license here]
 
 ## Acknowledgments
-- [OASIS Dataset](https://www.oasis-brains.org/)
-- [ADNI Dataset](http://adni.loni.usc.edu/)
+
+Augmented Alzimer Mri data set:-(https://www.kaggle.com/datasets/uraninjo/augmented-alzheimer-mri-dataset)
+
 - PyTorch team for providing pre-trained model architectures 
